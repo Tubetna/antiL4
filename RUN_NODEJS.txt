@@ -1,0 +1,46 @@
+HƯỚNG DẪN CHẠY NODE.JS SERVER TRÊN LINUX
+
+1. Upload code lên VPS:
+   scp -r ./* root@103.82.133.9:/root/antiL4/
+
+2. SSH vào VPS:
+   ssh root@103.82.133.9
+
+3. Cài đặt Node.js và npm (nếu chưa có):
+   curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+   apt-get install -y nodejs
+
+4. Di chuyển vào thư mục project:
+   cd /root/antiL4
+
+5. Cài đặt dependencies:
+   npm install
+
+6. Chạy server:
+   # Chạy bình thường
+   node index.js
+
+   # Hoặc chạy bằng npm
+   npm start
+
+   # Hoặc chạy background với PM2 (recommended)
+   npm install -g pm2
+   pm2 start index.js --name "anti-ddos"
+
+7. Kiểm tra server đang chạy:
+   # Kiểm tra port 3000
+   netstat -tulpn | grep 3000
+
+   # Xem log nếu dùng PM2
+   pm2 logs anti-ddos
+
+8. Một số lệnh PM2 hữu ích:
+   pm2 stop anti-ddos     # Dừng server
+   pm2 restart anti-ddos  # Khởi động lại
+   pm2 delete anti-ddos   # Xóa khỏi PM2
+   pm2 status            # Xem trạng thái
+
+Lưu ý: 
+- Server sẽ chạy trên port 3000
+- Đảm bảo port 3000 đã được mở trong anti_ddos.sh
+- Nên dùng PM2 để chạy server trong môi trường production

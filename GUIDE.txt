@@ -1,0 +1,23 @@
+HƯỚNG DẪN CHẠY ANTI DDOS LAYER 4
+
+1. Upload script lên VPS:
+   scp anti_ddos.sh root@[103.82.195.73]:/root/
+
+2. Kết nối SSH vào VPS:
+      
+
+3. Di chuyển vào thư mục root:
+   cd /root
+
+4. Cấp quyền chạy cho script:
+   chmod +x anti_ddos.sh
+
+5. Chạy script:
+   sudo ./anti_ddos.sh
+
+6. Kiểm tra trạng thái:
+   - Xem IP bị chặn:     fail2ban-client status
+   - Xem rules hiện tại: iptables -L -n
+   - Xem log:            cat /var/log/ddos.log
+
+Lưu ý: Thay [103.82.195.73] bằng IP thật của VPS bạn.
