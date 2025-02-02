@@ -65,12 +65,62 @@ setup_iptables() {
     # Anti-spoofing rules
     iptables -A INPUT -s 127.0.0.0/8 ! -i lo -j DROP
     
-    # Chống SYN flood
-    iptables -A INPUT -p tcp ! --syn -m conntrack --ctstate NEW -j DROP
-    iptables -A INPUT -p tcp --syn -m limit --limit 1/s --limit-burst 3 -j ACCEPT
+    # === Bảo vệ chống SYN Flood ===
+    # Giới hạn số lượng SYN packets
+    iptables -A INPUT -p tcp --syn -m limit --limit 2/s --limit-burst 30 -j ACCEPT
+    iptables -A INPUT -p tcp --syn -j DROP
     
-    # Chống Ping flood
-    iptables -A INPUT -p icmp --icmp-type echo-request -m limit --limit 1/s --limit-burst 5 -j ACCEPT
+    # SYN flood protection với hashlimit
+    iptables -A INPUT -p tcp --syn -m hashlimit \
+        --hashlimit-name synflood \
+        --hashlimit-above 200/sec \
+        --hashlimit-burst 3 \
+        --hashlimit-mode srcip \
+        --hashlimit-htable-size 32768 \
+        --hashlimit-htable-expire 30000 \
+        -j DROP
+    
+    # Bảo vệ TCP connection states
+    iptables -A INPUT -p tcp -m state --state NEW -m limit --limit 50/second --limit-burst 50 -j ACCEPT
+    iptables -A INPUT -p tcp -m state --state ESTABLISHED,RELATED -j ACCEPT
+    iptables -A INPUT -p tcp -m state --state INVALID -j DROP
+    
+    # === Bảo vệ chống UDP Flood ===
+    # Giới hạn UDP packets trên mỗi port
+    iptables -A INPUT -p udp -m limit --limit 50/s --limit-burst 100 -j ACCEPT
+    
+    # UDP flood protection với hashlimit
+    iptables -A INPUT -p udp -m hashlimit \
+        --hashlimit-name udpflood \
+        --hashlimit-above 100/sec \
+        --hashlimit-burst 150 \
+        --hashlimit-mode srcip \
+        --hashlimit-htable-size 32768 \
+        --hashlimit-htable-expire 30000 \
+        -j DROP
+    
+    # Block UDP flood trên các port không sử dụng
+    iptables -A INPUT -p udp ! --dport 53 -m limit --limit 5/m --limit-burst 10 -j ACCEPT
+    iptables -A INPUT -p udp ! --dport 53 -j DROP
+    
+    # === Bảo vệ chống ICMP Flood ===
+    # Giới hạn ICMP echo-request (ping)
+    iptables -A INPUT -p icmp --icmp-type echo-request -m limit --limit 1/s --limit-burst 10 -j ACCEPT
+    iptables -A INPUT -p icmp --icmp-type echo-request -j DROP
+    
+    # ICMP flood protection với hashlimit
+    iptables -A INPUT -p icmp --icmp-type echo-request -m hashlimit \
+        --hashlimit-name icmpflood \
+        --hashlimit-above 50/sec \
+        --hashlimit-burst 20 \
+        --hashlimit-mode srcip \
+        --hashlimit-htable-size 32768 \
+        --hashlimit-htable-expire 30000 \
+        -j DROP
+    
+    # Giới hạn kích thước ICMP
+    iptables -A INPUT -p icmp --icmp-type echo-request -m length --length 60:76 -j ACCEPT
+    iptables -A INPUT -p icmp --icmp-type echo-request -j DROP
     
     # Port scanning protection
     iptables -A INPUT -p tcp --tcp-flags ALL NONE -j DROP
@@ -196,12 +246,62 @@ EOF
     echo "DDoS Deflate đã được cài đặt và cấu hình thành công!"
 }
 
+# Cài đặt và cấu hình CSF
+install_csf() {
+    echo "=== Cài đặt ConfigServer Security & Firewall (CSF) ==="
+    
+    # Cài đặt các gói phụ thuộc
+    if command -v apt-get >/dev/null 2>&1; then
+        apt-get update
+        apt-get install -y perl unzip net-tools perl-libwww-perl perl-LWP-Protocol-https perl-GDGraph
+    elif command -v yum >/dev/null 2>&1; then
+        yum install -y perl unzip net-tools perl-libwww-perl perl-LWP-Protocol-https perl-GDGraph
+    fi
+
+    # Tải và cài đặt CSF
+    cd /usr/src
+    wget https://download.configserver.com/csf.tgz
+    tar -xzf csf.tgz
+    cd csf
+    sh install.sh
+
+    # Kiểm tra xem CSF có hoạt động không
+    if [ ! -f "/etc/csf/csf.conf" ]; then
+        echo "Lỗi: Không thể cài đặt CSF!"
+        return 1
+    fi
+
+    # Cấu hình CSF
+    sed -i 's/^TESTING = "1"/TESTING = "0"/' /etc/csf/csf.conf
+    sed -i "s/^TCP_IN = .*/TCP_IN = \"$SSH_PORT,80,443,3306,3000\"/" /etc/csf/csf.conf
+    sed -i "s/^TCP_OUT = .*/TCP_OUT = \"1:65535\"/" /etc/csf/csf.conf
+    sed -i "s/^UDP_IN = .*/UDP_IN = \"53,123,161,162\"/" /etc/csf/csf.conf
+    sed -i "s/^UDP_OUT = .*/UDP_OUT = \"1:65535\"/" /etc/csf/csf.conf
+    
+    # Cấu hình chống DDoS
+    sed -i 's/^CT_LIMIT = .*/CT_LIMIT = "150"/' /etc/csf/csf.conf
+    sed -i 's/^CT_INTERVAL = .*/CT_INTERVAL = "15"/' /etc/csf/csf.conf
+    sed -i 's/^PS_LIMIT = .*/PS_LIMIT = "10"/' /etc/csf/csf.conf
+    sed -i 's/^SYNFLOOD = .*/SYNFLOOD = "1"/' /etc/csf/csf.conf
+    sed -i 's/^PORTFLOOD = .*/PORTFLOOD = "1"/' /etc/csf/csf.conf
+    
+    # Cấu hình email thông báo
+    sed -i "s/^LF_EMAIL_ALERT = .*/LF_EMAIL_ALERT = \"1\"/" /etc/csf/csf.conf
+    sed -i "s/^LF_EMAIL_TO = .*/LF_EMAIL_TO = \"$ADMIN_EMAIL\"/" /etc/csf/csf.conf
+
+    # Khởi động lại CSF
+    csf -r
+
+    echo "CSF đã được cài đặt và cấu hình thành công!"
+}
+
 echo "=== Bắt đầu cấu hình Anti-DDoS Layer 4 ==="
 update_sysctl
 setup_iptables
 install_fail2ban
 install_ddos_deflate
-echo "=== Cấu hình hoàn tất! ==="
+install_csf
+echo "=== Hoàn tất cấu hình Anti-DDoS Layer 4 ==="
 echo "Vui lòng kiểm tra các file log để theo dõi hoạt động:"
 echo "- Fail2ban log: /var/log/fail2ban.log"
 echo "- DDoS Deflate log: /var/log/ddos.log"
