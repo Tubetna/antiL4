@@ -4,7 +4,7 @@ HƯỚNG DẪN CHẠY ANTI DDOS LAYER 4
    scp anti_ddos.sh root@[103.82.195.73]:/root/
 
 2. Kết nối SSH vào VPS:
-      
+   ssh root@[103.82.195.73]
 
 3. Di chuyển vào thư mục root:
    cd /root
