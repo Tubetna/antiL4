@@ -301,8 +301,25 @@ setup_iptables
 install_fail2ban
 install_ddos_deflate
 install_csf
-echo "=== Hoàn tất cấu hình Anti-DDoS Layer 4 ==="
-echo "Vui lòng kiểm tra các file log để theo dõi hoạt động:"
-echo "- Fail2ban log: /var/log/fail2ban.log"
-echo "- DDoS Deflate log: /var/log/ddos.log"
-echo "- System log: /var/log/syslog"
+
+echo -e "\e[92m╔═══════════════════════════════════════════════╗\e[0m"
+echo -e "\e[92m║         Anti-DDoS Layer 4 HAPDEV(THICH IT)    ║\e[0m"
+echo -e "\e[92m║                 Hoàn tất ✓                    ║\e[0m"
+echo -e "\e[92m╚═══════════════════════════════════════════════╝\e[0m"
+echo -e "\e[92m📱 Follow me on TikTok: @thch.it\e[0m"
+echo
+echo "📋 Thông tin hệ thống:"
+echo -e "  ├─ Fail2ban Status    : \e[92mĐang hoạt động\e[0m"
+echo -e "  ├─ DDoS Deflate       : \e[92mĐang hoạt động\e[0m"
+echo -e "  └─ CSF Firewall       : \e[92mĐang hoạt động\e[0m"
+echo
+echo "📁 File logs quan trọng:"
+echo -e "  ├─ Fail2ban    : \e[92m/var/log/fail2ban.log\e[0m"
+echo -e "  ├─ DDoS Deflate: \e[92m/var/log/ddos.log\e[0m"
+echo -e "  └─ Hệ thống    : \e[92m/var/log/syslog\e[0m"
+echo
+echo "💡 Để kiểm tra trạng thái:"
+echo -e "  ├─ Fail2ban    : \e[92mfail2ban-client status\e[0m"
+echo -e "  ├─ DDoS Deflate: \e[92mservice ddos status\e[0m"
+echo -e "  └─ CSF Firewall: \e[92mcsf -l\e[0m"
+echo
