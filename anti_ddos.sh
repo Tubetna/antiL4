@@ -295,6 +295,39 @@ install_csf() {
     echo "CSF đã được cài đặt và cấu hình thành công!"
 }
 
+stop_antiddos() {
+    echo -e "\e[92m╔═══════════════════════════════════════════════╗\e[0m"
+    echo -e "\e[92m║        Dừng Anti-DDoS Layer 4...             ║\e[0m"
+    echo -e "\e[92m╚═══════════════════════════════════════════════╝\e[0m"
+    
+    # Dừng Fail2ban
+    if systemctl is-active --quiet fail2ban; then
+        systemctl stop fail2ban
+        echo "✓ Đã dừng Fail2ban"
+    fi
+    
+    # Dừng DDoS Deflate
+    if [ -f "/usr/local/ddos/ddos.sh" ]; then
+        /usr/local/ddos/ddos.sh uninstall
+        echo "✓ Đã dừng DDoS Deflate"
+    fi
+    
+    # Dừng CSF Firewall
+    if [ -f "/etc/csf/csf.conf" ]; then
+        csf -x
+        echo "✓ Đã dừng CSF Firewall"
+    fi
+    
+    echo -e "\e[92m✓ Đã dừng tất cả dịch vụ Anti-DDoS\e[0m"
+    echo -e "\e[92m📱 Follow me on TikTok: @thch.it\e[0m"
+}
+
+# Thêm tùy chọn để dừng anti-ddos
+if [ "$1" = "stop" ]; then
+    stop_antiddos
+    exit 0
+fi
+
 echo "=== Bắt đầu cấu hình Anti-DDoS Layer 4 ==="
 update_sysctl
 setup_iptables
