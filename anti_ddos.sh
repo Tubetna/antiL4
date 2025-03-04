@@ -67,7 +67,7 @@ setup_iptables() {
 
     # === Bảo vệ chống SYN Flood ===
     # Giới hạn số lượng SYN packets
-    iptables -A INPUT -p tcp --syn -m limit --limit 2/s --limit-burst 30 -j ACCEPT
+    iptables -A INPUT -p tcp --syn -m limit --limit 2/s --limit-burst 60 -j ACCEPT
     iptables -A INPUT -p tcp --syn -j DROP
 
     # SYN flood protection với hashlimit
@@ -81,13 +81,13 @@ setup_iptables() {
         -j DROP
 
     # Bảo vệ TCP connection states
-    iptables -A INPUT -p tcp -m state --state NEW -m limit --limit 50/second --limit-burst 50 -j ACCEPT
+    iptables -A INPUT -p tcp -m state --state NEW -m limit --limit 10/second --limit-burst 50 -j ACCEPT
     iptables -A INPUT -p tcp -m state --state ESTABLISHED,RELATED -j ACCEPT
     iptables -A INPUT -p tcp -m state --state INVALID -j DROP
 
     # === Bảo vệ chống UDP Flood ===
     # Giới hạn UDP packets trên mỗi port
-    iptables -A INPUT -p udp -m limit --limit 50/s --limit-burst 100 -j ACCEPT
+    iptables -A INPUT -p udp -m limit --limit 20/s --limit-burst 100 -j ACCEPT
 
     # UDP flood protection với hashlimit
     iptables -A INPUT -p udp -m hashlimit \
@@ -100,12 +100,12 @@ setup_iptables() {
         -j DROP
 
     # Block UDP flood trên các port không sử dụng
-    iptables -A INPUT -p udp ! --dport 53 -m limit --limit 5/m --limit-burst 10 -j ACCEPT
+    iptables -A INPUT -p udp ! --dport 53 -m limit --limit 3/m --limit-burst 20 -j ACCEPT
     iptables -A INPUT -p udp ! --dport 53 -j DROP
 
     # === Bảo vệ chống ICMP Flood ===
     # Giới hạn ICMP echo-request (ping)
-    iptables -A INPUT -p icmp --icmp-type echo-request -m limit --limit 1/s --limit-burst 10 -j ACCEPT
+    iptables -A INPUT -p icmp --icmp-type echo-request -m limit --limit 2/s --limit-burst 20 -j ACCEPT
     iptables -A INPUT -p icmp --icmp-type echo-request -j DROP
 
     # ICMP flood protection với hashlimit
@@ -118,6 +118,7 @@ setup_iptables() {
         --hashlimit-htable-expire 30000 \
         -j DROP
 
+    sudo touch /var/log/ddos.log /var/log/fail2ban.log
     # Giới hạn kích thước ICMP
     iptables -A INPUT -p icmp --icmp-type echo-request -m length --length 60:76 -j ACCEPT
     iptables -A INPUT -p icmp --icmp-type echo-request -j DROP
@@ -127,10 +128,10 @@ setup_iptables() {
     iptables -A INPUT -p tcp --tcp-flags ALL ALL -j DROP
 
     # Chống UDP flood
-    iptables -A INPUT -p udp -m limit --limit 10/s --limit-burst 20 -j ACCEPT
+    iptables -A INPUT -p udp -m limit --limit 5/s --limit-burst 30 -j ACCEPT
 
     # Rate limit các connections mới
-    iptables -A INPUT -p tcp -m conntrack --ctstate NEW -m limit --limit 60/s --limit-burst 20 -j ACCEPT
+    iptables -A INPUT -p tcp -m conntrack --ctstate NEW -m limit --limit 60/s --limit-burst 30 -j ACCEPT
 
     # Mở SSH port
     iptables -A INPUT -p tcp --dport $SSH_PORT -j ACCEPT
